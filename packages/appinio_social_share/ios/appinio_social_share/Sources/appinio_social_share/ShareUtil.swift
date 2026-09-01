@@ -798,387 +798,96 @@ public class ShareUtil {
     }
 
     // MARK: - Facebook Story
-    public func shareToFacebookStory(
+    func shareToFacebookStory(
         args: [String: Any?],
         result: @escaping FlutterResult
     ) {
-        // MARK: - App ID
-    
+        // 1. Validasi App ID (Wajib untuk Facebook)
         guard let appId = args[self.argAppId] as? String,
-              !appId.isEmpty else {
-    
-            print("Facebook Story: appId is missing")
+              !appId.isEmpty
+        else {
             result(self.ERROR)
             return
         }
-    
-        // MARK: - Arguments
-    
-        let backgroundImagePath =
-            args[self.argbackgroundImage] as? String
-    
-        let stickerImagePath =
-            args[self.argstickerImage] as? String
-    
-        let videoPath =
-            args[self.argVideoFile] as? String
-    
-        let topColor =
-            args[self.argBackgroundTopColor] as? String
-    
-        let bottomColor =
-            args[self.argBackgroundBottomColor] as? String
-    
-        let attributionURL =
-            args[self.argAttributionURL] as? String
-    
-        // MARK: - Facebook URL
-    
-        // PERBAIKAN 1: Menambahkan app_id ke dalam URL Scheme
-        guard let facebookURL = URL(
-            string: "facebook-stories://share?app_id=\(appId)"
-        ) else {
-    
-            print("Facebook Story: invalid Facebook URL")
+
+        let imagePath = args[self.argbackgroundImage] as? String
+        let videoFile = args[self.argVideoFile] as? String
+        let stickerPath = args[self.argstickerImage] as? String
+        let backgroundTopColor = args[self.argBackgroundTopColor] as? String
+        let backgroundBottomColor = args[self.argBackgroundBottomColor] as? String
+        let attributionURL = args[self.argAttributionURL] as? String
+
+        // 2. Gunakan URL Scheme khusus Facebook
+        guard let facebookURL = URL(string: "facebook-stories://share") else {
             result(self.ERROR_APP_NOT_AVAILABLE)
             return
         }
-    
-        // MARK: - Check Facebook App
-    
-        guard UIApplication.shared.canOpenURL(
-            facebookURL
-        ) else {
-    
-            print(
-                "Facebook Story: Facebook app is not available"
-            )
-    
+
+        guard UIApplication.shared.canOpenURL(facebookURL) else {
             result(self.ERROR_APP_NOT_AVAILABLE)
             return
         }
-    
-        // MARK: - Build Pasteboard
-    
+
         var pasteboardItem: [String: Any] = [:]
-    
-        // Required App ID
-    
-        pasteboardItem[
-            "com.facebook.sharedSticker.appID"
-        ] = appId
-    
-        // MARK: - Attribution URL
-    
-        if let attributionURL = attributionURL,
-           !attributionURL.isEmpty {
-    
-            // PERBAIKAN 2: Menggunakan contentURL untuk Facebook
-            pasteboardItem[
-                "com.facebook.sharedSticker.contentURL"
-            ] = attributionURL
+
+        // 3. Masukkan App ID ke dalam Pasteboard (SYARAT MUTLAK DARI FACEBOOK)
+        pasteboardItem["com.facebook.sharedSticker.appID"] = appId
+
+        // Attribution URL
+        if let attributionURL = attributionURL, !attributionURL.isEmpty {
+            pasteboardItem["com.facebook.sharedSticker.contentURL"] = attributionURL // Note: FB uses contentURL instead of attributionURL
         }
-    
-        // MARK: - Background Image
-    
-        if let path = backgroundImagePath,
-           !path.isEmpty {
-    
-            guard FileManager.default.fileExists(
-                atPath: path
-            ) else {
-    
-                print(
-                    "Facebook Story: background image does not exist:"
-                )
-    
-                print(path)
-    
-                result(self.ERROR)
-                return
-            }
-    
-            guard let image = UIImage(
-                contentsOfFile: path
-            ) else {
-    
-                print(
-                    "Facebook Story: failed to load background image"
-                )
-    
-                result(self.ERROR)
-                return
-            }
-    
-            guard let imageData = image.pngData() else {
-    
-                print(
-                    "Facebook Story: failed to convert background image to PNG"
-                )
-    
-                result(self.ERROR)
-                return
-            }
-    
-            print(
-                "Facebook Story: background image size = \(imageData.count) bytes"
-            )
-    
-            pasteboardItem[
-                "com.facebook.sharedSticker.backgroundImage"
-            ] = imageData
+
+        // Background image
+        if let imagePath = imagePath,
+           !imagePath.isEmpty,
+           let backgroundImage = UIImage(contentsOfFile: imagePath) {
+            pasteboardItem["com.facebook.sharedSticker.backgroundImage"] = backgroundImage
         }
-    
-        // MARK: - Sticker Image
-    
-        if let path = stickerImagePath,
-           !path.isEmpty {
-    
-            guard FileManager.default.fileExists(
-                atPath: path
-            ) else {
-    
-                print(
-                    "Facebook Story: sticker image does not exist:"
-                )
-    
-                print(path)
-    
-                result(self.ERROR)
-                return
-            }
-    
-            guard let image = UIImage(
-                contentsOfFile: path
-            ) else {
-    
-                print(
-                    "Facebook Story: failed to load sticker image"
-                )
-    
-                result(self.ERROR)
-                return
-            }
-    
-            guard let imageData = image.pngData() else {
-    
-                print(
-                    "Facebook Story: failed to convert sticker image to PNG"
-                )
-    
-                result(self.ERROR)
-                return
-            }
-    
-            print(
-                "Facebook Story: sticker image size = \(imageData.count) bytes"
-            )
-    
-            pasteboardItem[
-                "com.facebook.sharedSticker.stickerImage"
-            ] = imageData
+
+        // Sticker image
+        if let stickerPath = stickerPath,
+           !stickerPath.isEmpty,
+           let stickerImage = UIImage(contentsOfFile: stickerPath) {
+            pasteboardItem["com.facebook.sharedSticker.stickerImage"] = stickerImage
         }
-    
-        // MARK: - Background Video
-    
-        if let path = videoPath,
-           !path.isEmpty {
-    
-            guard FileManager.default.fileExists(
-                atPath: path
-            ) else {
-    
-                print(
-                    "Facebook Story: video does not exist:"
-                )
-    
-                print(path)
-    
-                result(self.ERROR)
-                return
-            }
-    
-            let videoURL = URL(
-                fileURLWithPath: path
-            )
-    
-            guard let videoData = try? Data(
-                contentsOf: videoURL
-            ) else {
-    
-                print(
-                    "Facebook Story: failed to load video"
-                )
-    
-                result(self.ERROR)
-                return
-            }
-    
-            print(
-                "Facebook Story: video size = \(videoData.count) bytes"
-            )
-    
-            pasteboardItem[
-                "com.facebook.sharedSticker.backgroundVideo"
-            ] = videoData
-        }
-    
-        // MARK: - Background Colors
-    
-        if let topColor = topColor,
-           !topColor.isEmpty {
-    
-            pasteboardItem[
-                "com.facebook.sharedSticker.backgroundTopColor"
-            ] = topColor
-        }
-    
-        if let bottomColor = bottomColor,
-           !bottomColor.isEmpty {
-    
-            pasteboardItem[
-                "com.facebook.sharedSticker.backgroundBottomColor"
-            ] = bottomColor
-        }
-    
-        // MARK: - Debug Payload
-    
-        print(
-            "========== FACEBOOK STORY DEBUG =========="
-        )
-    
-        print(
-            "App ID: \(appId)"
-        )
-    
-        print(
-            "Facebook URL: \(facebookURL)"
-        )
-    
-        print(
-            "Pasteboard item count: \(pasteboardItem.count)"
-        )
-    
-        for (key, value) in pasteboardItem {
-    
-            if let data = value as? Data {
-    
-                print(
-                    "\(key): Data \(data.count) bytes"
-                )
-    
-            } else if let string = value as? String {
-    
-                print(
-                    "\(key): String = \(string)"
-                )
-    
-            } else {
-    
-                print(
-                    "\(key): Type = \(type(of: value))"
-                )
+
+        // Background video
+        if let videoFile = videoFile, !videoFile.isEmpty {
+            let backgroundVideoURL = URL(fileURLWithPath: videoFile)
+            if let videoData = try? Data(contentsOf: backgroundVideoURL) {
+                pasteboardItem["com.facebook.sharedSticker.backgroundVideo"] = videoData
             }
         }
-    
-        print(
-            "=========================================="
-        )
-    
-        // MARK: - Write Pasteboard
-    
-        // PERBAIKAN 3: Menambahkan expiration date 5 menit
-        let options: [UIPasteboard.OptionsKey: Any] = [
+
+        // Background top color
+        if let backgroundTopColor = backgroundTopColor, !backgroundTopColor.isEmpty {
+            pasteboardItem["com.facebook.sharedSticker.backgroundTopColor"] = backgroundTopColor
+        }
+
+        // Background bottom color
+        if let backgroundBottomColor = backgroundBottomColor, !backgroundBottomColor.isEmpty {
+            pasteboardItem["com.facebook.sharedSticker.backgroundBottomColor"] = backgroundBottomColor
+        }
+
+        // Cek jika pasteboard hanya berisi appId (berarti tidak ada konten yang dikirim)
+        guard pasteboardItem.count > 1 else {
+            result(self.ERROR)
+            return
+        }
+
+        let pasteboardOptions: [UIPasteboard.OptionsKey: Any] = [
             .expirationDate: Date().addingTimeInterval(60 * 5)
         ]
-    
+
         UIPasteboard.general.setItems(
             [pasteboardItem],
-            options: options
+            options: pasteboardOptions
         )
-    
-        print(
-            "Facebook Story: pasteboard items written successfully"
-        )
-    
-        // MARK: - Verify Pasteboard
-    
-        print(
-            "========== PASTEBOARD VERIFY =========="
-        )
-    
-        print(
-            "Number of items: \(UIPasteboard.general.numberOfItems)"
-        )
-    
-        if let storedItem =
-            UIPasteboard.general.items.first {
-    
-            print(
-                "Stored keys: \(storedItem.keys)"
-            )
-    
-            for (key, value) in storedItem {
-    
-                if let data = value as? Data {
-    
-                    print(
-                        "\(key): Data \(data.count) bytes"
-                    )
-    
-                } else if let string = value as? String {
-    
-                    print(
-                        "\(key): String = \(string)"
-                    )
-    
-                } else {
-    
-                    print(
-                        "\(key): Type = \(type(of: value))"
-                    )
-                }
-            }
-        }
-    
-        print(
-            "========================================"
-        )
-    
-        // MARK: - Open Facebook
-    
-        // PERBAIKAN 4: Menghapus delay asyncAfter karena setItems bekerja secara sinkron
+
         DispatchQueue.main.async {
-    
-            print(
-                "Facebook Story: opening Facebook..."
-            )
-    
-            UIApplication.shared.open(
-                facebookURL,
-                options: [:]
-            ) { success in
-    
-                print(
-                    "Facebook Story open result: \(success)"
-                )
-    
-                if !success {
-                    result(
-                        self.ERROR
-                    )
-                } else {
-                    result(
-                        self.SUCCESS
-                    )
-                }
-    
-                // Do NOT navigate back to Flutter.
-                //
-                // Facebook controls its own Story Composer lifecycle.
-                //
-                // If Facebook successfully handles the URL,
-                // the user should remain inside Facebook.
+            UIApplication.shared.open(facebookURL, options: [:]) { success in
+                result(success ? self.SUCCESS : self.ERROR)
             }
         }
     }
