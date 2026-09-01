@@ -834,8 +834,9 @@ public class ShareUtil {
     
         // MARK: - Facebook URL
     
+        // PERBAIKAN 1: Menambahkan app_id ke dalam URL Scheme
         guard let facebookURL = URL(
-            string: "facebook-stories://share"
+            string: "facebook-stories://share?app_id=\(appId)"
         ) else {
     
             print("Facebook Story: invalid Facebook URL")
@@ -872,8 +873,9 @@ public class ShareUtil {
         if let attributionURL = attributionURL,
            !attributionURL.isEmpty {
     
+            // PERBAIKAN 2: Menggunakan contentURL untuk Facebook
             pasteboardItem[
-                "com.facebook.sharedSticker.attributionURL"
+                "com.facebook.sharedSticker.contentURL"
             ] = attributionURL
         }
     
@@ -1022,10 +1024,6 @@ public class ShareUtil {
         }
     
         // MARK: - Background Colors
-        //
-        // Temporarily enabled only if values exist.
-        // If Facebook Story still behaves inconsistently,
-        // test again without these two fields.
     
         if let topColor = topColor,
            !topColor.isEmpty {
@@ -1089,9 +1087,10 @@ public class ShareUtil {
     
         // MARK: - Write Pasteboard
     
-        let options: [
-            UIPasteboard.OptionsKey: Any
-        ] = [:]
+        // PERBAIKAN 3: Menambahkan expiration date 5 menit
+        let options: [UIPasteboard.OptionsKey: Any] = [
+            .expirationDate: Date().addingTimeInterval(60 * 5)
+        ]
     
         UIPasteboard.general.setItems(
             [pasteboardItem],
@@ -1147,13 +1146,9 @@ public class ShareUtil {
         )
     
         // MARK: - Open Facebook
-        //
-        // Delay intentionally added to avoid a race condition
-        // between pasteboard write and Facebook reading it.
     
-        DispatchQueue.main.asyncAfter(
-            deadline: .now() + 1.0
-        ) {
+        // PERBAIKAN 4: Menghapus delay asyncAfter karena setItems bekerja secara sinkron
+        DispatchQueue.main.async {
     
             print(
                 "Facebook Story: opening Facebook..."
@@ -1169,9 +1164,12 @@ public class ShareUtil {
                 )
     
                 if !success {
-    
                     result(
                         self.ERROR
+                    )
+                } else {
+                    result(
+                        self.SUCCESS
                     )
                 }
     
