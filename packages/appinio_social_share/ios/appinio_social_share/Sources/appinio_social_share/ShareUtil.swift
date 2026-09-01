@@ -817,8 +817,8 @@ public class ShareUtil {
         let backgroundBottomColor = args[self.argBackgroundBottomColor] as? String
         let attributionURL = args[self.argAttributionURL] as? String
 
-        // 2. Gunakan URL Scheme khusus Facebook
-        guard let facebookURL = URL(string: "facebook-stories://share") else {
+        // 2. PERBAIKAN UTAMA: Tambahkan parameter app_id ke dalam string URL
+        guard let facebookURL = URL(string: "facebook-stories://share?app_id=\(appId)") else {
             result(self.ERROR_APP_NOT_AVAILABLE)
             return
         }
@@ -835,24 +835,28 @@ public class ShareUtil {
 
         // Attribution URL
         if let attributionURL = attributionURL, !attributionURL.isEmpty {
-            pasteboardItem["com.facebook.sharedSticker.contentURL"] = attributionURL // Note: FB uses contentURL instead of attributionURL
+            pasteboardItem["com.facebook.sharedSticker.contentURL"] = attributionURL
         }
 
-        // Background image
+        // 4. PERBAIKAN UTAMA: Konversi UIImage menjadi Data menggunakan .pngData()
         if let imagePath = imagePath,
            !imagePath.isEmpty,
-           let backgroundImage = UIImage(contentsOfFile: imagePath) {
-            pasteboardItem["com.facebook.sharedSticker.backgroundImage"] = backgroundImage
+           let backgroundImage = UIImage(contentsOfFile: imagePath),
+           let imageData = backgroundImage.pngData() {
+            
+            pasteboardItem["com.facebook.sharedSticker.backgroundImage"] = imageData
         }
 
-        // Sticker image
+        // 5. PERBAIKAN UTAMA: Konversi UIImage sticker menjadi Data menggunakan .pngData()
         if let stickerPath = stickerPath,
            !stickerPath.isEmpty,
-           let stickerImage = UIImage(contentsOfFile: stickerPath) {
-            pasteboardItem["com.facebook.sharedSticker.stickerImage"] = stickerImage
+           let stickerImage = UIImage(contentsOfFile: stickerPath),
+           let stickerData = stickerImage.pngData() {
+            
+            pasteboardItem["com.facebook.sharedSticker.stickerImage"] = stickerData
         }
 
-        // Background video
+        // Background video (Sudah benar karena menggunakan format Data)
         if let videoFile = videoFile, !videoFile.isEmpty {
             let backgroundVideoURL = URL(fileURLWithPath: videoFile)
             if let videoData = try? Data(contentsOf: backgroundVideoURL) {
