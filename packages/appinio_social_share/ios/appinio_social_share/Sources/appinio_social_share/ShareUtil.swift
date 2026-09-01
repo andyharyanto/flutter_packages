@@ -802,12 +802,17 @@ public class ShareUtil {
         args: [String: Any?],
         result: @escaping FlutterResult
     ) {
+        // MARK: - App ID
+    
         guard let appId = args[self.argAppId] as? String,
               !appId.isEmpty else {
+    
             print("Facebook Story: appId is missing")
             result(self.ERROR)
             return
         }
+    
+        // MARK: - Arguments
     
         let backgroundImagePath =
             args[self.argbackgroundImage] as? String
@@ -827,28 +832,42 @@ public class ShareUtil {
         let attributionURL =
             args[self.argAttributionURL] as? String
     
+        // MARK: - Facebook URL
+    
         guard let facebookURL = URL(
             string: "facebook-stories://share"
         ) else {
+    
+            print("Facebook Story: invalid Facebook URL")
             result(self.ERROR_APP_NOT_AVAILABLE)
             return
         }
     
-        guard UIApplication.shared.canOpenURL(facebookURL) else {
-            print("Facebook Story: Facebook app is not available")
+        // MARK: - Check Facebook App
+    
+        guard UIApplication.shared.canOpenURL(
+            facebookURL
+        ) else {
+    
+            print(
+                "Facebook Story: Facebook app is not available"
+            )
+    
             result(self.ERROR_APP_NOT_AVAILABLE)
             return
         }
+    
+        // MARK: - Build Pasteboard
     
         var pasteboardItem: [String: Any] = [:]
     
-        // MARK: App ID
+        // Required App ID
     
         pasteboardItem[
             "com.facebook.sharedSticker.appID"
         ] = appId
     
-        // MARK: Attribution URL
+        // MARK: - Attribution URL
     
         if let attributionURL = attributionURL,
            !attributionURL.isEmpty {
@@ -858,7 +877,7 @@ public class ShareUtil {
             ] = attributionURL
         }
     
-        // MARK: Background Image
+        // MARK: - Background Image
     
         if let path = backgroundImagePath,
            !path.isEmpty {
@@ -866,9 +885,13 @@ public class ShareUtil {
             guard FileManager.default.fileExists(
                 atPath: path
             ) else {
+    
                 print(
-                    "Facebook Story: background image does not exist: \(path)"
+                    "Facebook Story: background image does not exist:"
                 )
+    
+                print(path)
+    
                 result(self.ERROR)
                 return
             }
@@ -876,17 +899,21 @@ public class ShareUtil {
             guard let image = UIImage(
                 contentsOfFile: path
             ) else {
+    
                 print(
                     "Facebook Story: failed to load background image"
                 )
+    
                 result(self.ERROR)
                 return
             }
     
             guard let imageData = image.pngData() else {
+    
                 print(
                     "Facebook Story: failed to convert background image to PNG"
                 )
+    
                 result(self.ERROR)
                 return
             }
@@ -900,7 +927,7 @@ public class ShareUtil {
             ] = imageData
         }
     
-        // MARK: Sticker Image
+        // MARK: - Sticker Image
     
         if let path = stickerImagePath,
            !path.isEmpty {
@@ -908,9 +935,13 @@ public class ShareUtil {
             guard FileManager.default.fileExists(
                 atPath: path
             ) else {
+    
                 print(
-                    "Facebook Story: sticker image does not exist: \(path)"
+                    "Facebook Story: sticker image does not exist:"
                 )
+    
+                print(path)
+    
                 result(self.ERROR)
                 return
             }
@@ -918,17 +949,21 @@ public class ShareUtil {
             guard let image = UIImage(
                 contentsOfFile: path
             ) else {
+    
                 print(
                     "Facebook Story: failed to load sticker image"
                 )
+    
                 result(self.ERROR)
                 return
             }
     
             guard let imageData = image.pngData() else {
+    
                 print(
                     "Facebook Story: failed to convert sticker image to PNG"
                 )
+    
                 result(self.ERROR)
                 return
             }
@@ -942,7 +977,7 @@ public class ShareUtil {
             ] = imageData
         }
     
-        // MARK: Background Video
+        // MARK: - Background Video
     
         if let path = videoPath,
            !path.isEmpty {
@@ -950,35 +985,47 @@ public class ShareUtil {
             guard FileManager.default.fileExists(
                 atPath: path
             ) else {
+    
                 print(
-                    "Facebook Story: video does not exist: \(path)"
+                    "Facebook Story: video does not exist:"
                 )
+    
+                print(path)
+    
                 result(self.ERROR)
                 return
             }
     
-            guard let data = try? Data(
-                contentsOf: URL(
-                    fileURLWithPath: path
-                )
+            let videoURL = URL(
+                fileURLWithPath: path
+            )
+    
+            guard let videoData = try? Data(
+                contentsOf: videoURL
             ) else {
+    
                 print(
                     "Facebook Story: failed to load video"
                 )
+    
                 result(self.ERROR)
                 return
             }
     
             print(
-                "Facebook Story: video size = \(data.count) bytes"
+                "Facebook Story: video size = \(videoData.count) bytes"
             )
     
             pasteboardItem[
                 "com.facebook.sharedSticker.backgroundVideo"
-            ] = data
+            ] = videoData
         }
     
-        // MARK: Background Colors
+        // MARK: - Background Colors
+        //
+        // Temporarily enabled only if values exist.
+        // If Facebook Story still behaves inconsistently,
+        // test again without these two fields.
     
         if let topColor = topColor,
            !topColor.isEmpty {
@@ -996,31 +1043,55 @@ public class ShareUtil {
             ] = bottomColor
         }
     
+        // MARK: - Debug Payload
+    
         print(
-            "Facebook Story: pasteboard keys = \(pasteboardItem.keys)"
+            "========== FACEBOOK STORY DEBUG =========="
         )
-
-        print("========== FACEBOOK STORY DEBUG ==========")
-        print("App ID: \(appId)")
-        print("Facebook URL: \(facebookURL)")
-        print("Pasteboard item count: \(pasteboardItem.count)")
-        
+    
+        print(
+            "App ID: \(appId)"
+        )
+    
+        print(
+            "Facebook URL: \(facebookURL)"
+        )
+    
+        print(
+            "Pasteboard item count: \(pasteboardItem.count)"
+        )
+    
         for (key, value) in pasteboardItem {
+    
             if let data = value as? Data {
-                print("\(key): Data \(data.count) bytes")
+    
+                print(
+                    "\(key): Data \(data.count) bytes"
+                )
+    
+            } else if let string = value as? String {
+    
+                print(
+                    "\(key): String = \(string)"
+                )
+    
             } else {
-                print("\(key): \(value)")
+    
+                print(
+                    "\(key): Type = \(type(of: value))"
+                )
             }
         }
-        
-        print("==========================================")
+    
+        print(
+            "=========================================="
+        )
+    
+        // MARK: - Write Pasteboard
     
         let options: [
             UIPasteboard.OptionsKey: Any
-        ] = [
-            .expirationDate:
-                Date().addingTimeInterval(300)
-        ]
+        ] = [:]
     
         UIPasteboard.general.setItems(
             [pasteboardItem],
@@ -1031,7 +1102,62 @@ public class ShareUtil {
             "Facebook Story: pasteboard items written successfully"
         )
     
-        DispatchQueue.main.async {
+        // MARK: - Verify Pasteboard
+    
+        print(
+            "========== PASTEBOARD VERIFY =========="
+        )
+    
+        print(
+            "Number of items: \(UIPasteboard.general.numberOfItems)"
+        )
+    
+        if let storedItem =
+            UIPasteboard.general.items.first {
+    
+            print(
+                "Stored keys: \(storedItem.keys)"
+            )
+    
+            for (key, value) in storedItem {
+    
+                if let data = value as? Data {
+    
+                    print(
+                        "\(key): Data \(data.count) bytes"
+                    )
+    
+                } else if let string = value as? String {
+    
+                    print(
+                        "\(key): String = \(string)"
+                    )
+    
+                } else {
+    
+                    print(
+                        "\(key): Type = \(type(of: value))"
+                    )
+                }
+            }
+        }
+    
+        print(
+            "========================================"
+        )
+    
+        // MARK: - Open Facebook
+        //
+        // Delay intentionally added to avoid a race condition
+        // between pasteboard write and Facebook reading it.
+    
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + 1.0
+        ) {
+    
+            print(
+                "Facebook Story: opening Facebook..."
+            )
     
             UIApplication.shared.open(
                 facebookURL,
@@ -1039,14 +1165,22 @@ public class ShareUtil {
             ) { success in
     
                 print(
-                    "Facebook Story: open result = \(success)"
+                    "Facebook Story open result: \(success)"
                 )
     
-                result(
-                    success
-                        ? self.SUCCESS
-                        : self.ERROR
-                )
+                if !success {
+    
+                    result(
+                        self.ERROR
+                    )
+                }
+    
+                // Do NOT navigate back to Flutter.
+                //
+                // Facebook controls its own Story Composer lifecycle.
+                //
+                // If Facebook successfully handles the URL,
+                // the user should remain inside Facebook.
             }
         }
     }
