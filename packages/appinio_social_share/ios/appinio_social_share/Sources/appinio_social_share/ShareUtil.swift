@@ -827,15 +827,14 @@ public class ShareUtil {
         let attributionURL =
             args[self.argAttributionURL] as? String
     
-        guard let facebookURL =
-            URL(string: "facebook-stories://share") else {
+        guard let facebookURL = URL(
+            string: "facebook-stories://share"
+        ) else {
             result(self.ERROR_APP_NOT_AVAILABLE)
             return
         }
     
-        guard UIApplication.shared.canOpenURL(
-            facebookURL
-        ) else {
+        guard UIApplication.shared.canOpenURL(facebookURL) else {
             print("Facebook Story: Facebook app is not available")
             result(self.ERROR_APP_NOT_AVAILABLE)
             return
@@ -843,12 +842,14 @@ public class ShareUtil {
     
         var pasteboardItem: [String: Any] = [:]
     
-        // REQUIRED
+        // MARK: App ID
+    
         pasteboardItem[
             "com.facebook.sharedSticker.appID"
         ] = appId
     
-        // Attribution URL
+        // MARK: Attribution URL
+    
         if let attributionURL = attributionURL,
            !attributionURL.isEmpty {
     
@@ -857,7 +858,8 @@ public class ShareUtil {
             ] = attributionURL
         }
     
-        // Background image
+        // MARK: Background Image
+    
         if let path = backgroundImagePath,
            !path.isEmpty {
     
@@ -871,8 +873,9 @@ public class ShareUtil {
                 return
             }
     
-            guard let image =
-                UIImage(contentsOfFile: path) else {
+            guard let image = UIImage(
+                contentsOfFile: path
+            ) else {
                 print(
                     "Facebook Story: failed to load background image"
                 )
@@ -880,12 +883,25 @@ public class ShareUtil {
                 return
             }
     
+            guard let imageData = image.pngData() else {
+                print(
+                    "Facebook Story: failed to convert background image to PNG"
+                )
+                result(self.ERROR)
+                return
+            }
+    
+            print(
+                "Facebook Story: background image size = \(imageData.count) bytes"
+            )
+    
             pasteboardItem[
                 "com.facebook.sharedSticker.backgroundImage"
-            ] = image
+            ] = imageData
         }
     
-        // Sticker image
+        // MARK: Sticker Image
+    
         if let path = stickerImagePath,
            !path.isEmpty {
     
@@ -899,8 +915,9 @@ public class ShareUtil {
                 return
             }
     
-            guard let image =
-                UIImage(contentsOfFile: path) else {
+            guard let image = UIImage(
+                contentsOfFile: path
+            ) else {
                 print(
                     "Facebook Story: failed to load sticker image"
                 )
@@ -908,12 +925,25 @@ public class ShareUtil {
                 return
             }
     
+            guard let imageData = image.pngData() else {
+                print(
+                    "Facebook Story: failed to convert sticker image to PNG"
+                )
+                result(self.ERROR)
+                return
+            }
+    
+            print(
+                "Facebook Story: sticker image size = \(imageData.count) bytes"
+            )
+    
             pasteboardItem[
                 "com.facebook.sharedSticker.stickerImage"
-            ] = image
+            ] = imageData
         }
     
-        // Background video
+        // MARK: Background Video
+    
         if let path = videoPath,
            !path.isEmpty {
     
@@ -927,12 +957,11 @@ public class ShareUtil {
                 return
             }
     
-            guard let data =
-                try? Data(
-                    contentsOf: URL(
-                        fileURLWithPath: path
-                    )
-                ) else {
+            guard let data = try? Data(
+                contentsOf: URL(
+                    fileURLWithPath: path
+                )
+            ) else {
                 print(
                     "Facebook Story: failed to load video"
                 )
@@ -940,12 +969,17 @@ public class ShareUtil {
                 return
             }
     
+            print(
+                "Facebook Story: video size = \(data.count) bytes"
+            )
+    
             pasteboardItem[
                 "com.facebook.sharedSticker.backgroundVideo"
             ] = data
         }
     
-        // Background colors
+        // MARK: Background Colors
+    
         if let topColor = topColor,
            !topColor.isEmpty {
     
@@ -963,10 +997,24 @@ public class ShareUtil {
         }
     
         print(
-            "Facebook Story pasteboard keys: \(pasteboardItem.keys)"
+            "Facebook Story: pasteboard keys = \(pasteboardItem.keys)"
         )
+
+        print("========== FACEBOOK STORY DEBUG ==========")
+        print("App ID: \(appId)")
+        print("Facebook URL: \(facebookURL)")
+        print("Pasteboard item count: \(pasteboardItem.count)")
+        
+        for (key, value) in pasteboardItem {
+            if let data = value as? Data {
+                print("\(key): Data \(data.count) bytes")
+            } else {
+                print("\(key): \(value)")
+            }
+        }
+        
+        print("==========================================")
     
-        // Pasteboard MUST be written immediately before opening Facebook.
         let options: [
             UIPasteboard.OptionsKey: Any
         ] = [
@@ -979,6 +1027,10 @@ public class ShareUtil {
             options: options
         )
     
+        print(
+            "Facebook Story: pasteboard items written successfully"
+        )
+    
         DispatchQueue.main.async {
     
             UIApplication.shared.open(
@@ -987,7 +1039,7 @@ public class ShareUtil {
             ) { success in
     
                 print(
-                    "Facebook Story open result: \(success)"
+                    "Facebook Story: open result = \(success)"
                 )
     
                 result(
