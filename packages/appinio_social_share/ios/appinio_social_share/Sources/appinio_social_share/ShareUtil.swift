@@ -956,51 +956,32 @@ public class ShareUtil {
         args: [String: Any?],
         result: @escaping FlutterResult
     ) {
-        guard let message =
-            args[self.argMessage] as? String
-        else {
+        guard let message = args[self.argMessage] as? String else {
             result(self.ERROR)
             return
         }
-
-        /*
-         IMPORTANT:
-         SLComposeViewController / Social.framework
-         is deprecated and should not be used on modern iOS.
-
-         For text-only sharing, use the Twitter/X intent.
-        */
-
+    
         var components = URLComponents()
-        components.scheme = "twitter"
-        components.host = "intent"
-        components.path = "/tweet"
+        components.scheme = "https"
+        components.host = "twitter.com"
+        components.path = "/intent/tweet"
         components.queryItems = [
             URLQueryItem(
                 name: "text",
                 value: message
             )
         ]
-
+    
         guard let twitterURL = components.url else {
             result(self.ERROR)
             return
         }
-
-        guard UIApplication.shared.canOpenURL(
-            twitterURL
-        ) else {
-            result(self.ERROR_APP_NOT_AVAILABLE)
-            return
-        }
-
+    
         DispatchQueue.main.async {
-
             UIApplication.shared.open(
                 twitterURL,
                 options: [:]
             ) { success in
-
                 result(
                     success
                         ? self.SUCCESS
