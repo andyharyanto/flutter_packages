@@ -798,149 +798,198 @@ public class ShareUtil {
     }
 
     // MARK: - Facebook Story
-
     public func shareToFacebookStory(
         args: [String: Any?],
         result: @escaping FlutterResult
     ) {
-        guard let appId =
-            args[self.argAppId] as? String,
-            !appId.isEmpty
-        else {
+        guard let appId = args[self.argAppId] as? String,
+              !appId.isEmpty else {
+            print("Facebook Story: appId is missing")
             result(self.ERROR)
             return
         }
-
-        let imagePath =
+    
+        let backgroundImagePath =
             args[self.argbackgroundImage] as? String
-
-        let videoFile =
-            args[self.argVideoFile] as? String
-
-        let stickerPath =
+    
+        let stickerImagePath =
             args[self.argstickerImage] as? String
-
-        let backgroundTopColor =
+    
+        let videoPath =
+            args[self.argVideoFile] as? String
+    
+        let topColor =
             args[self.argBackgroundTopColor] as? String
-
-        let backgroundBottomColor =
+    
+        let bottomColor =
             args[self.argBackgroundBottomColor] as? String
-
+    
         let attributionURL =
             args[self.argAttributionURL] as? String
-
-        guard
-            let facebookURL =
-                URL(string: "facebook-stories://share")
-        else {
+    
+        guard let facebookURL =
+            URL(string: "facebook-stories://share") else {
             result(self.ERROR_APP_NOT_AVAILABLE)
             return
         }
-
+    
         guard UIApplication.shared.canOpenURL(
             facebookURL
         ) else {
+            print("Facebook Story: Facebook app is not available")
             result(self.ERROR_APP_NOT_AVAILABLE)
             return
         }
-
+    
         var pasteboardItem: [String: Any] = [:]
-
-        // App ID
+    
+        // REQUIRED
         pasteboardItem[
             "com.facebook.sharedSticker.appID"
         ] = appId
-
+    
         // Attribution URL
         if let attributionURL = attributionURL,
            !attributionURL.isEmpty {
-
+    
             pasteboardItem[
                 "com.facebook.sharedSticker.attributionURL"
             ] = attributionURL
         }
-
-        // Background top color
-        if let backgroundTopColor = backgroundTopColor,
-           !backgroundTopColor.isEmpty {
-
-            pasteboardItem[
-                "com.facebook.sharedSticker.backgroundTopColor"
-            ] = backgroundTopColor
-        }
-
-        // Background bottom color
-        if let backgroundBottomColor = backgroundBottomColor,
-           !backgroundBottomColor.isEmpty {
-
-            pasteboardItem[
-                "com.facebook.sharedSticker.backgroundBottomColor"
-            ] = backgroundBottomColor
-        }
-
+    
         // Background image
-        if let imagePath = imagePath,
-           !imagePath.isEmpty,
-           let image = UIImage(
-               contentsOfFile: imagePath
-           ) {
-
+        if let path = backgroundImagePath,
+           !path.isEmpty {
+    
+            guard FileManager.default.fileExists(
+                atPath: path
+            ) else {
+                print(
+                    "Facebook Story: background image does not exist: \(path)"
+                )
+                result(self.ERROR)
+                return
+            }
+    
+            guard let image =
+                UIImage(contentsOfFile: path) else {
+                print(
+                    "Facebook Story: failed to load background image"
+                )
+                result(self.ERROR)
+                return
+            }
+    
             pasteboardItem[
                 "com.facebook.sharedSticker.backgroundImage"
             ] = image
         }
-
+    
         // Sticker image
-        if let stickerPath = stickerPath,
-           !stickerPath.isEmpty,
-           let sticker = UIImage(
-               contentsOfFile: stickerPath
-           ) {
-
+        if let path = stickerImagePath,
+           !path.isEmpty {
+    
+            guard FileManager.default.fileExists(
+                atPath: path
+            ) else {
+                print(
+                    "Facebook Story: sticker image does not exist: \(path)"
+                )
+                result(self.ERROR)
+                return
+            }
+    
+            guard let image =
+                UIImage(contentsOfFile: path) else {
+                print(
+                    "Facebook Story: failed to load sticker image"
+                )
+                result(self.ERROR)
+                return
+            }
+    
             pasteboardItem[
                 "com.facebook.sharedSticker.stickerImage"
-            ] = sticker
+            ] = image
         }
-
+    
         // Background video
-        if let videoFile = videoFile,
-           !videoFile.isEmpty {
-
-            let videoURL =
-                URL(fileURLWithPath: videoFile)
-
-            if let videoData =
-                try? Data(contentsOf: videoURL) {
-
-                pasteboardItem[
-                    "com.facebook.sharedSticker.backgroundVideo"
-                ] = videoData
+        if let path = videoPath,
+           !path.isEmpty {
+    
+            guard FileManager.default.fileExists(
+                atPath: path
+            ) else {
+                print(
+                    "Facebook Story: video does not exist: \(path)"
+                )
+                result(self.ERROR)
+                return
             }
+    
+            guard let data =
+                try? Data(
+                    contentsOf: URL(
+                        fileURLWithPath: path
+                    )
+                ) else {
+                print(
+                    "Facebook Story: failed to load video"
+                )
+                result(self.ERROR)
+                return
+            }
+    
+            pasteboardItem[
+                "com.facebook.sharedSticker.backgroundVideo"
+            ] = data
         }
-
-        guard !pasteboardItem.isEmpty else {
-            result(self.ERROR)
-            return
+    
+        // Background colors
+        if let topColor = topColor,
+           !topColor.isEmpty {
+    
+            pasteboardItem[
+                "com.facebook.sharedSticker.backgroundTopColor"
+            ] = topColor
         }
-
-        let pasteboardOptions:
-            [UIPasteboard.OptionsKey: Any] = [
-                .expirationDate:
-                    Date().addingTimeInterval(60 * 5)
-            ]
-
+    
+        if let bottomColor = bottomColor,
+           !bottomColor.isEmpty {
+    
+            pasteboardItem[
+                "com.facebook.sharedSticker.backgroundBottomColor"
+            ] = bottomColor
+        }
+    
+        print(
+            "Facebook Story pasteboard keys: \(pasteboardItem.keys)"
+        )
+    
+        // Pasteboard MUST be written immediately before opening Facebook.
+        let options: [
+            UIPasteboard.OptionsKey: Any
+        ] = [
+            .expirationDate:
+                Date().addingTimeInterval(300)
+        ]
+    
         UIPasteboard.general.setItems(
             [pasteboardItem],
-            options: pasteboardOptions
+            options: options
         )
-
+    
         DispatchQueue.main.async {
-
+    
             UIApplication.shared.open(
                 facebookURL,
                 options: [:]
             ) { success in
-
+    
+                print(
+                    "Facebook Story open result: \(success)"
+                )
+    
                 result(
                     success
                         ? self.SUCCESS
@@ -951,43 +1000,49 @@ public class ShareUtil {
     }
 
     // MARK: - Twitter / X
-
     func shareToTwitter(
         args: [String: Any?],
         result: @escaping FlutterResult
     ) {
-        guard let message = args[self.argMessage] as? String else {
-            result(self.ERROR)
-            return
+        let message = args[self.argMessage] as? String
+        let imagePaths = args[self.argImagePaths] as? [String]
+    
+        var items: [Any] = []
+    
+        if let message = message, !message.isEmpty {
+            items.append(message)
         }
     
-        var components = URLComponents()
-        components.scheme = "https"
-        components.host = "twitter.com"
-        components.path = "/intent/tweet"
-        components.queryItems = [
-            URLQueryItem(
-                name: "text",
-                value: message
-            )
-        ]
+        if let imagePaths = imagePaths {
+            for path in imagePaths {
+                if let image = UIImage(contentsOfFile: path) {
+                    items.append(image)
+                }
+            }
+        }
     
-        guard let twitterURL = components.url else {
+        guard !items.isEmpty else {
             result(self.ERROR)
             return
         }
     
         DispatchQueue.main.async {
-            UIApplication.shared.open(
-                twitterURL,
-                options: [:]
-            ) { success in
-                result(
-                    success
-                        ? self.SUCCESS
-                        : self.ERROR
-                )
+            guard let vc = UIApplication.topViewController() else {
+                result(self.ERROR)
+                return
             }
+    
+            let controller = UIActivityViewController(
+                activityItems: items,
+                applicationActivities: nil
+            )
+    
+            vc.present(
+                controller,
+                animated: true
+            )
+    
+            result(self.SUCCESS)
         }
     }
 
